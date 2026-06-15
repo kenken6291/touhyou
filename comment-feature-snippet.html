@@ -1,0 +1,130 @@
+<!-- ============================================================
+  投票コメント機能：index.html への追加スニペット
+  既存コードの変更は不要。以下2ブロックを「追加」するだけです。
+============================================================ -->
+
+
+<!-- ─────────────────────────────────────────────
+  【ブロック1：HTML】
+  貼り付け位置：「🔢 番号で投票する」セクションの直後あたり
+  （管理メニューより上）が自然です
+───────────────────────────────────────────── -->
+<div id="comment-section" style="margin:24px 0; padding:16px; border:1px solid #ddd; border-radius:8px;">
+  <h2 style="font-size:1.1em; margin-top:0;">💬 コメントを残す</h2>
+
+  <label for="comment-target" style="display:block; margin-bottom:4px;">コメントする投票対象</label>
+  <select id="comment-target" style="width:100%; padding:8px; margin-bottom:12px; box-sizing:border-box;">
+    <option value="">読込中...</option>
+  </select>
+
+  <label for="comment-text" style="display:block; margin-bottom:4px;">コメント（500文字まで）</label>
+  <textarea id="comment-text" rows="3" maxlength="500"
+    placeholder="例：駅から近くて行きやすいと思います！"
+    style="width:100%; padding:8px; box-sizing:border-box; margin-bottom:12px;"></textarea>
+
+  <button id="comment-submit" type="button"
+    style="padding:10px 20px; border:none; border-radius:6px; background:#4a90d9; color:#fff; cursor:pointer;">
+    コメントを送信
+  </button>
+
+  <p id="comment-status" style="margin:8px 0 0; font-size:0.9em;"></p>
+</div>
+
+
+<!-- ─────────────────────────────────────────────
+  【ブロック2：JavaScript】
+  貼り付け位置：</body> の直前（既存の <script> より後ろ）
+───────────────────────────────────────────── -->
+<script>
+(function () {
+  // ★ デプロイした「コメント用GAS」のWebアプリURLに差し替えてください
+  const COMMENT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwsjLiUVAjJvgXNGF0901R2ujusLGc_MTERkdHkQoEj_wsTX_DIErSd5wMm0lfk8NS2LQ/exec';
+
+  const targetSelect = document.getElementById('comment-target');
+  const commentText  = document.getElementById('comment-text');
+  const submitBtn    = document.getElementById('comment-submit');
+  const statusEl     = document.getElementById('comment-status');
+
+  /* ----------------------------------------------------------
+   * 1) プルダウンに投票項目をセットする
+   *
+   * 方法A（推奨・確実）:
+   *   既存JSの中で投票項目一覧を描画している箇所
+   *   （GASから items を受け取って forEach しているあたり）で、
+   *   次の1行を呼んでください：
+   *
+   *     populateCommentTargets(items.map(it => it.name));
+   *     // ※ 配列の形に合わせて it.name / it[0] 等は調整
+   *
+   * 方法B（既存JSを一切触りたくない場合のフォールバック）:
+   *   ページ描画後に投票項目リストのDOMから項目名を拾います。
+   *   下の ITEM_SELECTOR を、実際の項目要素に合わせて調整してください。
+   * ---------------------------------------------------------- */
+  window.populateCommentTargets = function (names) {
+    targetSelect.innerHTML = '<option value="">選択してください</option>';
+    names.forEach(function (name) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      targetSelect.appendChild(opt);
+    });
+  };
+
+  // ── 方法B：フォールバック（3秒後にDOMから項目名を取得）──
+  const ITEM_SELECTOR = '#choices li, .item-name, .choice-label'; // ←実際の構造に合わせて変更
+  setTimeout(function () {
+    if (targetSelect.options.length > 1) return; // 方法Aで設定済みなら何もしない
+    const names = Array.from(document.querySelectorAll(ITEM_SELECTOR))
+      .map(el => el.textContent.replace(/^[\d\.\s×]+|[×]\s*$/g, '').trim())
+      .filter(Boolean);
+    if (names.length) {
+      populateCommentTargets(names);
+    } else {
+      targetSelect.innerHTML = '<option value="">（項目を取得できませんでした）</option>';
+    }
+  }, 3000);
+
+  /* ----------------------------------------------------------
+   * 2) 送信処理（fetch / 非同期POST）
+   *
+   * CORS回避のポイント：
+   *  - Content-Type を text/plain にする（プリフライトOPTIONSを発生させない）
+   *  - GASはOPTIONSに応答できないため、application/json を指定すると失敗します
+   * ---------------------------------------------------------- */
+  submitBtn.addEventListener('click', async function () {
+    const target  = targetSelect.value;
+    const comment = commentText.value.trim();
+
+    if (!target)  { showStatus('投票対象を選択してください', true); return; }
+    if (!comment) { showStatus('コメントを入力してください', true); return; }
+
+    submitBtn.disabled = true;
+    showStatus('送信中...', false);
+
+    try {
+      const res = await fetch(COMMENT_GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // ←重要
+        body: JSON.stringify({ target: target, comment: comment })
+      });
+      const json = await res.json();
+
+      if (json.status === 'ok') {
+        showStatus('✅ コメントを送信しました。ありがとうございます！', false);
+        commentText.value = '';
+      } else {
+        showStatus('送信エラー：' + (json.message || '不明なエラー'), true);
+      }
+    } catch (err) {
+      showStatus('通信に失敗しました。時間をおいて再度お試しください。', true);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  function showStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.style.color = isError ? '#c0392b' : '#2e7d32';
+  }
+})();
+</script>
