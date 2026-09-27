@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗳️ みんなの投票</title>
+    <style>
+        :root {
+            --fb-blue: #1877f2;
+            --fb-blue-dark: #145dbf;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #050505;
+            --sub: #65676b;
+            --line: #e4e6eb;
+            --danger: #e41e3f;
+            --ok: #42b72a;
+            --gold: #f5b50a;
+            --guide-bg: #fff8e1;
+            --guide-line: #f5b50a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", Roboto, Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 0 16px 16px;
+            color: var(--text);
+        }
+
+        .container { max-width: 560px; margin: 0 auto; }
+        body.pc .container { max-width: 680px; }
+
+        /* ===== アプリヘッダー ===== */
+        .app-header {
+            position: sticky; top: 0; z-index: 10;
+            background: rgba(240,242,245,0.94);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            margin: 0 -16px 12px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--line);
+        }
+        .app-header-inner {
+            max-width: 560px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        body.pc .app-header-inner { max-width: 680px; }
+        .app-name { font-size: 1.15rem; font-weight: bold; margin: 0; }
+        .guide-open-btn {
+            background: #fff; border: 1px solid #ccd0d5; border-radius: 999px;
+            padding: 6px 12px; font-size: 0.8rem; font-weight: bold;
+            color: var(--sub); cursor: pointer;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        /* ===== 1分でわかる使い方 ===== */
+        .guide {
+            position: relative;
+            background: var(--guide-bg);
+            border-left: 5px solid var(--guide-line);
+            border-radius: 12px;
+            padding: 16px 16px 14px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .guide[hidden] { display: none; }
+        .guide-close {
+            position: absolute; top: 6px; right: 8px;
+            background: none; border: none; font-size: 1.4rem;
+            color: var(--sub); cursor: pointer; padding: 4px 8px;
+        }
+        .guide-title { font-weight: bold; font-size: 1.05rem; margin: 0 0 10px; }
+        .guide-steps { list-style: none; margin: 0 0 10px; padding: 0; }
+        .guide-steps li {
+            display: flex; align-items: flex-start; gap: 10px;
+            margin-bottom: 8px; font-size: 0.92rem; line-height: 1.5;
+        }
+        .guide-steps .step-no {
+            flex-shrink: 0;
+            width: 28px; height: 28px; line-height: 28px;
+            text-align: center; border-radius: 50%;
+            background: var(--guide-line); color: #fff; font-weight: bold;
+        }
+        .guide-steps b { display: block; font-size: 1rem; }
+        .guide-link {
+            display: inline-block; font-size: 0.85rem; font-weight: bold;
+            color: var(--fb-blue); text-decoration: none;
+        }
+
+        /* ===== テーマ選択 ===== */
+        .theme-list { display: flex; flex-direction: column; gap: 10px; }
+        .theme-btn {
+            width: 100%;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            background: #fff;
+            border: 2px solid var(--fb-blue);
+            border-radius: 999px;
+            padding: 12px 18px;
+            font-size: 1rem; font-weight: bold;
+            color: var(--fb-blue);
+            cursor: pointer; text-align: left;
+            font-family: inherit;
+        }
+        .theme-btn:active { transform: scale(0.98); }
+        .theme-btn.active { background: var(--fb-blue); color: #fff; }
+        .theme-btn .theme-title { flex: 1; min-width: 0; word-break: break-all; }
+        .theme-btn .theme-meta { font-size: 0.75rem; font-weight: normal; white-space: nowrap; opacity: 0.85; }
+
+        h1 { font-size: 1.25rem; margin: 0 0 6px; }
+        .desc { color: var(--sub); font-size: 0.9rem; margin: 0 0 8px; }
+
+        .deadline {
+            display: inline-block;
+            background: #e7f3ff;
+            color: var(--fb-blue);
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 999px;
+            padding: 4px 12px;
+        }
+        .deadline.closed { background: #ffe5e9; color: var(--danger); }
+
+        .hint { font-size: 0.78rem; color: var(--sub); margin-top: 8px; }
+        .section-title { font-size: 0.95rem; font-weight: bold; margin: 0 0 10px; }
+
+        .loading { text-align: center; color: var(--sub); padding: 20px; }
+
+        .option {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .option.voted { border-color: var(--fb-blue); background: #f5f9ff; }
+
+        .option-top { display: flex; align-items: center; gap: 10px; }
+
+        .opt-num {
+            background: var(--fb-blue);
+            color: #fff;
+            border-radius: 50%;
+            min-width: 24px; height: 24px; line-height: 24px;
+            text-align: center;
+            font-size: 0.8rem; font-weight: bold;
+            flex-shrink: 0;
+        }
+        .opt-emoji { font-size: 1.5rem; }
+        .opt-name { font-weight: bold; font-size: 1rem; flex-grow: 1; word-break: break-all; }
+
+        .opt-link {
+            color: var(--fb-blue);
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-decoration: none;
+            white-space: nowrap;
+            margin-left: 6px;
+        }
+        .opt-link:active { color: var(--fb-blue-dark); }
+
+        .vote-btn {
+            background: var(--fb-blue);
+            color: #fff;
+            border: none; border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.85rem; font-weight: bold;
+            cursor: pointer; flex-shrink: 0;
+        }
+        .vote-btn:active { background: var(--fb-blue-dark); }
+        .vote-btn:disabled { background: #bcc0c4; cursor: default; }
+
+        .result-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        .bar-track { flex-grow: 1; background: var(--line); border-radius: 999px; height: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--fb-blue); border-radius: 999px; width: 0%; transition: width 0.4s ease; }
+        .vote-count { font-size: 0.85rem; color: var(--sub); white-space: nowrap; min-width: 86px; text-align: right; }
+
+        .my-vote-note {
+            text-align: center; font-size: 0.85rem;
+            color: var(--fb-blue); font-weight: bold;
+            margin: 0 0 10px; min-height: 1.2em;
+        }
+
+        /* ===== 結果グラフ（縦棒） ===== */
+        .chart-card.flash { animation: flash 1.6s ease; }
+        @keyframes flash {
+            0%   { box-shadow: 0 0 0 0 rgba(24,119,242,0.6); }
+            40%  { box-shadow: 0 0 0 8px rgba(24,119,242,0.15); }
+            100% { box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+        }
+        .chart-headline { text-align: center; font-size: 1.1rem; font-weight: bold; margin: 0 0 2px; }
+        .chart-total { text-align: center; font-size: 0.8rem; color: var(--sub); margin: 0 0 8px; }
+        .chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .chart-inner { min-width: 100%; }
+        .chart-area {
+            position: relative;
+            height: 210px;
+            display: flex; align-items: flex-end; gap: 8px;
+            padding: 0 4px;
+            border-bottom: 2px solid #ccd0d5;
+            background-image: repeating-linear-gradient(to top, transparent 0, transparent 51px, var(--line) 51px, var(--line) 52px);
+        }
+        .chart-col {
+            flex: 1 0 54px;
+            height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+        }
+        .chart-pct { font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; white-space: nowrap; }
+        .chart-votes { font-size: 0.7rem; color: var(--sub); margin-bottom: 4px; white-space: nowrap; }
+        .chart-bar {
+            width: 68%; max-width: 56px;
+            border-radius: 6px 6px 0 0;
+            min-height: 3px;
+            transition: height 0.7s cubic-bezier(.2,.8,.2,1);
+        }
+        .chart-col.mine .chart-bar { outline: 3px solid var(--text); outline-offset: 1px; }
+        .chart-names { display: flex; gap: 8px; padding: 6px 4px 0; }
+        .chart-name {
+            flex: 1 0 54px;
+            text-align: center; font-size: 0.75rem; line-height: 1.3;
+            word-break: break-all;
+        }
+        .chart-name .emoji { display: block; font-size: 1.2rem; }
+        .chart-name .mine-tag {
+            display: inline-block; margin-top: 2px;
+            background: var(--text); color: #fff; border-radius: 4px;
+            font-size: 0.65rem; padding: 1px 5px;
+        }
+        .chart-empty { text-align: center; color: var(--sub); font-size: 0.85rem; padding: 12px 0 0; }
+
+        .rank-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 4px;
+            border-bottom: 1px solid var(--line);
+        }
+        .rank-row:last-child { border-bottom: none; }
+        .rank-medal { font-size: 1.3rem; min-width: 34px; text-align: center; font-weight: bold; color: var(--sub); }
+        .rank-name { flex-grow: 1; font-weight: bold; word-break: break-all; }
+        .rank-stats { text-align: right; white-space: nowrap; }
+        .rank-votes { font-weight: bold; font-size: 1rem; }
+        .rank-pct { color: var(--sub); font-size: 0.8rem; }
+
+        .comment-row { padding: 10px 4px; border-bottom: 1px solid var(--line); }
+        .comment-row:last-child { border-bottom: none; }
+        .comment-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .comment-target {
+            background: #e7f3ff; color: var(--fb-blue);
+            font-size: 0.75rem; font-weight: bold;
+            border-radius: 999px; padding: 2px 10px;
+            max-width: 60%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .comment-time { font-size: 0.75rem; color: var(--sub); }
+        .comment-body { font-size: 0.9rem; margin: 0; white-space: pre-wrap; word-break: break-word; }
+
+        .row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .row input, .row select, .row textarea {
+            padding: 10px;
+            border: 1px solid #ccd0d5; border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .row textarea { resize: vertical; }
+        .row .grow { flex: 1; min-width: 0; }
+        .row .emoji-input { width: 64px; text-align: center; }
+        .row button {
+            border: none; border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: bold; color: #fff;
+            cursor: pointer; white-space: nowrap;
+        }
+        .btn-blue { background: var(--fb-blue); }
+        .btn-green { background: var(--ok); }
+        .btn-gray { background: #8a8d91; }
+
+        .del-opt-btn {
+            background: none; border: none;
+            color: var(--sub); font-size: 1.1rem;
+            cursor: pointer; padding: 4px 6px; flex-shrink: 0;
+        }
+        .del-opt-btn:active { color: var(--danger); }
+
+        .reset-btn {
+            display: block; width: 100%;
+            background: none;
+            border: 1px solid #ccd0d5; border-radius: 8px;
+            padding: 10px;
+            font-size: 0.9rem; color: var(--sub); cursor: pointer;
+        }
+
+        details > summary {
+            cursor: pointer; font-weight: bold; font-size: 0.95rem;
+            list-style: none;
+        }
+        details > summary::before { content: '▸ '; }
+        details[open] > summary::before { content: '▾ '; }
+        .admin-body { margin-top: 12px; }
+        .admin-label { font-size: 0.8rem; color: var(--sub); margin: 10px 0 4px; }
+        .admin-sep { border: none; border-top: 1px dashed var(--line); margin: 16px 0 6px; }
+
+        body.mobile .vote-btn { padding: 12px 16px; font-size: 0.95rem; }
+        body.mobile .del-opt-btn { font-size: 1.4rem; padding: 6px 10px; }
+        body.mobile .card { padding: 14px; }
+    </style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="app-header-inner">
+        <p class="app-name">🗳️ みんなの投票</p>
+        <button class="guide-open-btn" id="guideOpenBtn" onclick="openGuide()" hidden>📖 使い方</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- 1分でわかる使い方 -->
+    <div class="guide" id="guide" hidden>
+        <button class="guide-close" onclick="closeGuide()" title="閉じる">×</button>
+        <p class="guide-title">📖 1分でわかる、使い方</p>
+        <ul class="guide-steps">
+            <li><span class="step-no">1</span><span><b>テーマを選んで</b>下の「テーマを選ぶ」から、気になるテーマをタップ</span></li>
+            <li><span class="step-no">2</span><span><b>押すだけ</b>好きな項目の「👍 投票」をタップするだけ。登録は不要です</span></li>
+            <li><span class="step-no">3</span><span><b>結果はその場でグラフに</b>投票するとすぐに、みんなの結果がグラフで見られます</span></li>
+        </ul>
+        <a class="guide-link" href="https://kenken6291.github.io/touhyou-lp/" target="_blank" rel="noopener">詳しくはこちらから ›</a>
+    </div>
+
+    <!-- テーマ選択 -->
+    <div class="card">
+        <p class="section-title">🗂️ テーマを選ぶ</p>
+        <div id="themeList" class="theme-list loading">読込中...</div>
+    </div>
+
+    <div class="card">
+        <h1 id="pollTitle">📊 読込中...</h1>
+        <p class="desc" id="pollDesc"></p>
+        <span class="deadline" id="deadlineBadge">締切を確認中...</span>
+        <p class="hint" id="deviceHint"></p>
+    </div>
+
+    <div class="card">
+        <p class="my-vote-note" id="myVoteNote"></p>
+        <div id="options" class="loading">読込中...</div>
+        <button class="reset-btn" onclick="resetMyVote()">投票をやり直す</button>
+    </div>
+
+    <!-- 結果グラフ -->
+    <div class="card chart-card" id="chartCard">
+        <p class="chart-headline">📊 結果はその場でグラフに</p>
+        <p class="chart-total" id="chartTotal"></p>
+        <div class="chart-scroll">
+            <div class="chart-inner" id="chartInner">
+                <div class="chart-area" id="chartArea"></div>
+                <div class="chart-names" id="chartNames"></div>
+            </div>
+        </div>
+        <p class="chart-empty" id="chartEmpty" hidden>まだ票がありません。最初の1票をどうぞ！</p>
+    </div>
+
+    <div class="card">
+        <p class="section-title">🏆 現在の上位5件</p>
+        <div id="ranking" class="loading">読込中...</div>
+    </div>
+
+    <div class="card">
+        <p class="section-title">🔢 番号で投票する</p>
+        <div class="row">
+            <input type="text" id="numInput" class="grow" inputmode="numeric" placeholder="項目の番号を入力（例: 2）">
+            <button class="btn-green" onclick="voteByNumber()">投票</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <p class="section-title">💬 コメントを残す</p>
+        <div class="row">
+            <select id="commentTarget" class="grow">
+                <option value="">読込中...</option>
+            </select>
+        </div>
+        <div class="row">
+            <textarea id="commentText" class="grow" rows="3" maxlength="500"
+                placeholder="コメントを入力（500文字まで）"></textarea>
+        </div>
+        <div class="row">
+            <button class="btn-blue grow" id="commentSubmit" onclick="sendComment()">コメントを送信</button>
+        </div>
+        <p class="hint" id="commentStatus"></p>
+    </div>
+
+    <div class="card">
+        <p class="section-title">📝 みんなのコメント <span class="hint" style="font-weight:normal">（このテーマの最新50件）</span></p>
+        <div id="commentList" class="loading">読込中...</div>
+    </div>
+
+    <div class="card">
+        <details>
+            <summary>⚙️ 管理メニュー（テーマ・文章・項目・締切の設定）</summary>
+            <div class="admin-body">
+                <p class="admin-label">管理キー（code.gsで設定したもの）</p>
+                <div class="row">
+                    <input type="password" id="adminKey" class="grow" placeholder="管理キー">
+                </div>
+
+                <hr class="admin-sep">
+                <p class="section-title">🗂️ テーマの管理</p>
+
+                <p class="admin-label">新しいテーマを追加</p>
+                <div class="row">
+                    <input type="text" id="themeTitle" class="grow" maxlength="60" placeholder="テーマ名（例：好きな季節は？）">
+                </div>
+                <div class="row">
+                    <input type="text" id="themeDesc" class="grow" maxlength="200" placeholder="説明文（任意）">
+                </div>
+                <div class="row">
+                    <textarea id="themeOptions" class="grow" rows="4" placeholder="投票項目を1行に1つ（任意・あとから追加も可）&#10;春&#10;夏&#10;秋&#10;冬"></textarea>
+                </div>
+                <div class="row">
+                    <button class="btn-blue grow" onclick="addTheme()">＋ テーマを追加</button>
+                </div>
+
+                <p class="admin-label">表示中のテーマを削除（票・項目もすべて消えます）</p>
+                <button class="reset-btn" onclick="deleteTheme()">🗑️ このテーマを削除</button>
+
+                <hr class="admin-sep">
+                <p class="section-title">✏️ 表示中のテーマの設定</p>
+
+                <p class="admin-label">タイトル・説明文を変更（空欄の項目は変更されません）</p>
+                <div class="row">
+                    <input type="text" id="newTitle" class="grow" placeholder="新しいタイトル">
+                </div>
+                <div class="row">
+                    <input type="text" id="newDesc" class="grow" placeholder="新しい説明文">
+                    <button class="btn-blue" onclick="setText()">変更</button>
+                </div>
+
+                <p class="admin-label">投票項目を追加</p>
+                <div class="row">
+                    <input type="text" class="emoji-input" id="newEmoji" placeholder="絵文字" maxlength="4">
+                    <input type="text" class="grow" id="newName" placeholder="新しい項目名">
+                </div>
+                <div class="row">
+                    <input type="url" class="grow" id="newUrl" placeholder="リンクURL（任意・https://〜）">
+                    <button class="btn-blue" onclick="addOption()">＋ 追加</button>
+                </div>
+                <p class="hint">削除は各項目の「×」ボタン（管理キー入力時のみ有効）</p>
+
+                <p class="admin-label">既存の項目にリンクを設定（番号で指定・URL空欄で解除）</p>
+                <div class="row">
+                    <input type="text" class="emoji-input" id="linkNum" inputmode="numeric" placeholder="番号">
+                    <input type="url" class="grow" id="linkUrl" placeholder="https://〜">
+                    <button class="btn-blue" onclick="setOptionUrl()">設定</button>
+                </div>
+
+                <p class="admin-label">投票締切日時を設定</p>
+                <div class="row">
+                    <input type="datetime-local" id="deadlineInput" class="grow">
+                    <button class="btn-blue" onclick="setDeadline()">設定</button>
+                    <button class="btn-gray" onclick="clearDeadline()">解除</button>
+                </div>
+
+                <p class="admin-label">このテーマの票をリセット</p>
+                <button class="reset-btn" onclick="resetAllVotes()">⚠️ 全票をゼロに戻す</button>
+            </div>
+        </details>
+    </div>
+
+</div>
+
+<script>
+    // ★★★ Google Apps Script（code.gs）のウェブアプリURL ★★★
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyY43fbK6Mm0hc_l8Qy1HaCmVNKUotjJ6zC2cFSK1tDo-YbajOjC1Xw9XBawmQDtKzn/exec';
+
+    // ★★★ コメント保存用GAS（comment-backend.gs）のウェブアプリURL ★★★
+    const COMMENT_API_URL = 'https://script.google.com/macros/s/AKfycbwsjLiUVAjJvgXNGF0901R2ujusLGc_MTERkdHkQoEj_wsTX_DIErSd5wMm0lfk8NS2LQ/exec';
+
+    const LP_URL = 'https://kenken6291.github.io/touhyou-lp/';
+    const CHART_COLORS = ['#e5534b', '#3b82f6', '#43a047', '#f5a623', '#9c5fd6', '#00a3a3', '#ec6fa0', '#7a869a'];
+
+    const isMobile = window.matchMedia('(pointer: coarse)').matches
+                  || 'ontouchstart' in window
+                  || window.innerWidth < 700;
+    document.body.classList.add(isMobile ? 'mobile' : 'pc');
+    document.getElementById('deviceHint').textContent = isMobile
+        ? 'スマホ表示：ボタンをタップ、または番号入力で投票できます'
+        : 'PC表示：クリック、または番号入力で投票できます';
+
+    // ---- localStorage（使えない環境ではメモリで代用） ----
+    const memStore = {};
+    function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return memStore[k] ?? null; } }
+    function lsSet(k, v) { memStore[k] = v; try { localStorage.setItem(k, v); } catch (e) {} }
+    function lsDel(k) { delete memStore[k]; try { localStorage.removeItem(k); } catch (e) {} }
+
+    // 自分の投票はテーマごとに記録（旧版の 'myVote' はテーマ1として引き継ぐ）
+    function loadMyVote(tid = currentThemeId) {
+        let s = lsGet('myVote_' + tid);
+        if (s === null && Number(tid) === 1) s = lsGet('myVote');
+        try { return s === null ? null : JSON.parse(s); } catch (e) { return null; }
+    }
+    function saveMyVote(v, tid = currentThemeId) {
+        if (v === null) {
+            lsSet('myVote_' + tid, 'null');
+        } else {
+            lsSet('myVote_' + tid, JSON.stringify(v));
+        }
+        if (Number(tid) === 1) lsDel('myVote');
+    }
+
+    let poll = null;
+    let themes = [];
+    let currentThemeId = Number(new URLSearchParams(location.search).get('t')) || null;
+    let busy = false;
+    let lastChartKey = '';
+
+    // ---- 使い方ガイド ----
+    function openGuide() {
+        document.getElementById('guide').hidden = false;
+        document.getElementById('guideOpenBtn').hidden = true;
+        lsDel('guideClosed');
+    }
+    function closeGuide() {
+        document.getElementById('guide').hidden = true;
+        document.getElementById('guideOpenBtn').hidden = false;
+        lsSet('guideClosed', '1');
+    }
+    if (lsGet('guideClosed')) closeGuide(); else openGuide();
+
+    // ---- API ----
+    async function apiGet(themeId) {
+        const url = themeId ? `${API_URL}?theme=${encodeURIComponent(themeId)}` : API_URL;
+        const res = await fetch(url);
+        return res.json();
+    }
+    async function apiPost(body) {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ themeId: currentThemeId, ...body })
+        });
+        return res.json();
+    }
+
+    // 旧バックエンド（テーマ非対応）の応答も受け付ける
+    function applyResponse(res) {
+        if (!res || !res.poll) return;
+        poll = res.poll;
+        if (poll.id == null) poll.id = 1;
+        themes = Array.isArray(res.themes) && res.themes.length
+            ? res.themes
+            : [{ id: poll.id, title: poll.title, total: poll.options.reduce((s, o) => s + o.votes, 0) }];
+        currentThemeId = poll.id;
+    }
+
+    function isClosed() {
+        return poll && poll.deadline && new Date() > new Date(poll.deadline);
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function linkHtml(o) {
+        if (!o.url || !/^https?:\/\//i.test(o.url)) return '';
+        return ` <a class="opt-link" href="${escapeHtml(o.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">🔗詳細</a>`;
+    }
+
+    function fmtDate(iso) {
+        const d = new Date(iso);
+        return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    // ---- テーマ選択ボタン ----
+    function renderThemes() {
+        const el = document.getElementById('themeList');
+        el.className = 'theme-list';
+        if (!themes.length) { el.innerHTML = '<p class="hint">テーマがありません。</p>'; return; }
+        el.innerHTML = themes.map(t => {
+            const voted = loadMyVote(t.id) !== null;
+            const closed = t.deadline && new Date() > new Date(t.deadline);
+            const meta = [voted ? '✅投票済' : '', closed ? '締切' : '', `${t.total ?? 0}票`].filter(Boolean).join('・');
+            return `<button class="theme-btn ${t.id === currentThemeId ? 'active' : ''}" onclick="selectTheme(${t.id})">
+                        <span class="theme-title">${escapeHtml(t.title)}</span>
+                        <span class="theme-meta">${meta}</span>
+                    </button>`;
+        }).join('');
+    }
+
+    async function selectTheme(id) {
+        if (id === currentThemeId && poll) return;
+        currentThemeId = id;
+        const url = new URL(location.href);
+        url.searchParams.set('t', id);
+        history.replaceState(null, '', url);
+
+        poll = null;
+        lastChartKey = '';
+        renderThemes();
+        document.getElementById('pollTitle').textContent = '📊 読込中...';
+        document.getElementById('pollDesc').textContent = '';
+        document.getElementById('options').className = 'loading';
+        document.getElementById('options').innerHTML = '読込中...';
+        document.getElementById('commentList').className = 'loading';
+        document.getElementById('commentList').innerHTML = '読込中...';
+        document.getElementById('commentStatus').textContent = '';
+
+        await load();
+        loadComments();
+        document.getElementById('pollTitle').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ---- 結果グラフ ----
+    function renderChart(animate) {
+        const total = poll.options.reduce((s, o) => s + o.votes, 0);
+        const myVote = loadMyVote();
+        const area = document.getElementById('chartArea');
+        const names = document.getElementById('chartNames');
+        const inner = document.getElementById('chartInner');
+
+        document.getElementById('chartTotal').textContent = `（投票総数 ${total} 票・得票率）`;
+        document.getElementById('chartEmpty').hidden = total > 0 || poll.options.length === 0;
+
+        // 変化が無ければ再描画しない（自動更新でチラつかないように）
+        const key = JSON.stringify([poll.id, myVote, poll.options.map(o => [o.id, o.votes, o.name, o.emoji])]);
+        if (key === lastChartKey && !animate) return;
+        lastChartKey = key;
+
+        if (poll.options.length === 0) {
+            area.innerHTML = '';
+            names.innerHTML = '<p class="chart-empty" style="width:100%">投票項目がありません。</p>';
+            return;
+        }
+
+        inner.style.minWidth = (poll.options.length * 62) + 'px';
+        const maxPct = Math.max(1, ...poll.options.map(o => total ? o.votes / total * 100 : 0));
+        const heights = [];
+
+        area.innerHTML = poll.options.map((o, i) => {
+            const pct = total ? o.votes / total * 100 : 0;
+            const h = total ? Math.max(2, pct / maxPct * 150) : 2; // 最大150px（ラベル分の余白を残す）
+            heights.push(h);
+            const color = CHART_COLORS[i % CHART_COLORS.length];
+            return `<div class="chart-col ${myVote === o.id ? 'mine' : ''}">
+                        <span class="chart-pct" style="color:${color}">${pct.toFixed(1)}%</span>
+                        <span class="chart-votes">${o.votes}票</span>
+                        <div class="chart-bar" style="background:${color};height:${animate ? 0 : h}px"></div>
+                    </div>`;
+        }).join('');
+
+        names.innerHTML = poll.options.map(o => `
+            <div class="chart-name">
+                <span class="emoji">${o.emoji}</span>${escapeHtml(o.name)}
+                ${myVote === o.id ? '<br><span class="mine-tag">あなた</span>' : ''}
+            </div>`).join('');
+
+        if (animate) {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                area.querySelectorAll('.chart-bar').forEach((b, i) => b.style.height = heights[i] + 'px');
+            }));
+        }
+    }
+
+    function showChartAfterVote() {
+        renderChart(true);
+        const card = document.getElementById('chartCard');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.remove('flash');
+        void card.offsetWidth;
+        card.classList.add('flash');
+    }
+
+    // ---- 全体描画 ----
+    function render() {
+        if (!poll) return;
+        const total = poll.options.reduce((s, o) => s + o.votes, 0);
+        const myVote = loadMyVote();
+        const closed = isClosed();
+
+        document.title = `🗳️ ${poll.title}｜みんなの投票`;
+        document.getElementById('pollTitle').textContent = poll.title;
+        document.getElementById('pollDesc').textContent = poll.desc || '';
+        document.getElementById('newTitle').placeholder = '現在: ' + poll.title;
+        document.getElementById('newDesc').placeholder = '現在: ' + (poll.desc || '（説明文なし）');
+
+        const badge = document.getElementById('deadlineBadge');
+        if (closed) {
+            badge.textContent = `投票は締め切りました（${fmtDate(poll.deadline)}まで）`;
+            badge.className = 'deadline closed';
+        } else if (poll.deadline) {
+            badge.textContent = `投票受付中（締め切り: ${fmtDate(poll.deadline)}）`;
+            badge.className = 'deadline';
+        } else {
+            badge.textContent = '投票受付中（締め切りなし）';
+            badge.className = 'deadline';
+        }
+
+        renderThemes();
+        renderChart(false);
+
+        const rankEl = document.getElementById('ranking');
+        rankEl.className = '';
+        const top5 = [...poll.options].sort((a, b) => b.votes - a.votes).slice(0, 5);
+        if (top5.length === 0) {
+            rankEl.innerHTML = '<p class="hint">投票項目がありません。</p>';
+        } else {
+            const medals = ['🥇', '🥈', '🥉', '4位', '5位'];
+            rankEl.innerHTML = top5.map((o, i) => {
+                const pct = total > 0 ? Math.round(o.votes / total * 100) : 0;
+                return `
+                <div class="rank-row">
+                    <span class="rank-medal">${medals[i]}</span>
+                    <span class="rank-name">${o.emoji} ${escapeHtml(o.name)}${linkHtml(o)}</span>
+                    <span class="rank-stats">
+                        <span class="rank-votes">${o.votes} 票</span><br>
+                        <span class="rank-pct">獲得率 ${pct}%</span>
+                    </span>
+                </div>`;
+            }).join('');
+        }
+
+        const wrap = document.getElementById('options');
+        wrap.className = '';
+        if (poll.options.length === 0) {
+            wrap.innerHTML = '<p class="hint">投票項目がありません。管理メニューから追加してください。</p>';
+        } else {
+            wrap.innerHTML = '';
+            poll.options.forEach((o, i) => {
+                const pct = total > 0 ? Math.round(o.votes / total * 100) : 0;
+                const voted = myVote === o.id;
+                const disabled = closed || myVote !== null;
+                const div = document.createElement('div');
+                div.className = 'option' + (voted ? ' voted' : '');
+                div.innerHTML = `
+                    <div class="option-top">
+                        <span class="opt-num">${i + 1}</span>
+                        <span class="opt-emoji">${o.emoji}</span>
+                        <span class="opt-name">${escapeHtml(o.name)}${linkHtml(o)}</span>
+                        <button class="vote-btn" ${disabled ? 'disabled' : ''} onclick="vote(${o.id})">👍 投票</button>
+                        <button class="del-opt-btn" onclick="deleteOption(${o.id})" title="この項目を削除">×</button>
+                    </div>
+                    <div class="result-row">
+                        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+                        <span class="vote-count">${o.votes} 票 (${pct}%)</span>
+                    </div>`;
+                wrap.appendChild(div);
+            });
+        }
+
+        const note = document.getElementById('myVoteNote');
+        if (myVote !== null) {
+            const o = poll.options.find(x => x.id === myVote);
+            note.textContent = o ? `✅ あなたは「${o.name}」に投票済みです` : '';
+        } else {
+            note.textContent = closed ? '' : 'まだ投票していません';
+        }
+
+        const sel = document.getElementById('commentTarget');
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">コメントする投票対象を選択</option>' +
+            poll.options.map(o =>
+                `<option value="${escapeHtml(o.name)}">${o.emoji} ${escapeHtml(o.name)}</option>`
+            ).join('');
+        if ([...sel.options].some(op => op.value === prev)) sel.value = prev;
+    }
+
+    // ---- 投票 ----
+    async function vote(id) {
+        if (busy) return;
+        if (isClosed()) { alert('投票は締め切られました。'); return; }
+        if (loadMyVote() !== null) { alert('投票済みです。「投票をやり直す」を押すと変更できます。'); return; }
+        busy = true;
+        try {
+            const res = await apiPost({ action: 'vote', id });
+            if (!res.ok) { alert(res.error); return; }
+            saveMyVote(id);
+            applyResponse(res);
+            render();
+            showChartAfterVote();
+        } catch (e) {
+            alert('通信に失敗しました。時間をおいて再度お試しください。');
+        } finally {
+            busy = false;
+        }
+    }
+
+    function voteByNumber() {
+        const input = document.getElementById('numInput');
+        const num = parseInt(input.value.trim(), 10);
+        if (!poll || isNaN(num) || num < 1 || num > poll.options.length) {
+            alert(`1〜${poll ? poll.options.length : '?'} の番号を入力してください。`);
+            return;
+        }
+        input.value = '';
+        vote(poll.options[num - 1].id);
+    }
+    document.getElementById('numInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') voteByNumber();
+    });
+
+    async function resetMyVote() {
+        const myVote = loadMyVote();
+        if (myVote === null) { alert('まだ投票していません。'); return; }
+        if (isClosed()) { alert('締め切り後は変更できません。'); return; }
+        const res = await apiPost({ action: 'unvote', id: myVote });
+        if (!res.ok) { alert(res.error); return; }
+        saveMyVote(null);
+        applyResponse(res);
+        render();
+    }
+
+    // ---- コメント ----
+    async function sendComment() {
+        const target = document.getElementById('commentTarget').value;
+        const comment = document.getElementById('commentText').value.trim();
+        const statusEl = document.getElementById('commentStatus');
+        if (!target) { alert('コメントする投票対象を選択してください。'); return; }
+        if (!comment) { alert('コメントを入力してください。'); return; }
+
+        const btn = document.getElementById('commentSubmit');
+        btn.disabled = true;
+        statusEl.textContent = '送信中...';
+        try {
+            const res = await fetch(COMMENT_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ target, comment, themeId: currentThemeId })
+            });
+            const json = await res.json();
+            if (json.status === 'ok') {
+                statusEl.textContent = '✅ コメントを送信しました。ありがとうございます！';
+                document.getElementById('commentText').value = '';
+                loadComments();
+            } else {
+                statusEl.textContent = '⚠️ 送信エラー：' + (json.message || '不明なエラー');
+            }
+        } catch (e) {
+            statusEl.textContent = '⚠️ 通信に失敗しました。時間をおいて再度お試しください。';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function loadComments() {
+        const listEl = document.getElementById('commentList');
+        if (!/^https?:\/\//.test(COMMENT_API_URL)) {
+            listEl.className = '';
+            listEl.innerHTML = '<p class="hint">COMMENT_API_URLが未設定のため、コメントを表示できません。</p>';
+            return;
+        }
+        const tid = currentThemeId;
+        try {
+            const url = tid ? `${COMMENT_API_URL}?theme=${encodeURIComponent(tid)}` : COMMENT_API_URL;
+            const res = await fetch(url);
+            const json = await res.json();
+            if (tid !== currentThemeId) return; // 途中でテーマが切り替わった
+            if (json.status !== 'ok') throw new Error(json.message || 'error');
+
+            listEl.className = '';
+            if (!json.comments || json.comments.length === 0) {
+                listEl.innerHTML = '<p class="hint">まだコメントはありません。最初のコメントを送ってみましょう！</p>';
+                return;
+            }
+            listEl.innerHTML = json.comments.map(c => `
+                <div class="comment-row">
+                    <div class="comment-meta">
+                        <span class="comment-target">${escapeHtml(c.target)}</span>
+                        <span class="comment-time">${c.timestamp ? fmtDate(c.timestamp) : ''}</span>
+                    </div>
+                    <p class="comment-body">${escapeHtml(c.comment)}</p>
+                </div>`).join('');
+        } catch (e) {
+            if (listEl.classList.contains('loading')) {
+                listEl.className = '';
+                listEl.innerHTML = '<p class="hint">⚠️ コメントを読み込めませんでした。</p>';
+            }
+        }
+    }
+
+    // ---- 管理 ----
+    function adminKey() { return document.getElementById('adminKey').value.trim(); }
+
+    async function addTheme() {
+        const title = document.getElementById('themeTitle').value.trim();
+        if (!title) { alert('テーマ名を入力してください。'); return; }
+        const desc = document.getElementById('themeDesc').value.trim();
+        const options = document.getElementById('themeOptions').value
+            .split('\n').map(s => s.trim()).filter(Boolean);
+        const res = await apiPost({ action: 'addTheme', adminKey: adminKey(), title, desc, options });
+        if (!res.ok) { alert(res.error); return; }
+        document.getElementById('themeTitle').value = '';
+        document.getElementById('themeDesc').value = '';
+        document.getElementById('themeOptions').value = '';
+        applyResponse(res);
+        const url = new URL(location.href);
+        url.searchParams.set('t', currentThemeId);
+        history.replaceState(null, '', url);
+        lastChartKey = '';
+        render();
+        loadComments();
+        alert(`テーマ「${poll.title}」を追加しました。`);
+    }
+
+    async function deleteTheme() {
+        if (!poll) return;
+        if (!adminKey()) { alert('削除には管理キーの入力が必要です。'); return; }
+        if (!confirm(`テーマ「${poll.title}」を削除しますか？\n票・項目もすべて消え、元に戻せません。`)) return;
+        const delId = currentThemeId;
+        const res = await apiPost({ action: 'deleteTheme', adminKey: adminKey(), themeId: delId });
+        if (!res.ok) { alert(res.error); return; }
+        lsDel('myVote_' + delId);
+        applyResponse(res);
+        const url = new URL(location.href);
+        url.searchParams.set('t', currentThemeId);
+        history.replaceState(null, '', url);
+        lastChartKey = '';
+        render();
+        loadComments();
+        alert('テーマを削除しました。');
+    }
+
+    async function setText() {
+        const title = document.getElementById('newTitle').value.trim();
+        const desc = document.getElementById('newDesc').value.trim();
+        if (!title && !desc) { alert('タイトルか説明文を入力してください。'); return; }
+        const res = await apiPost({ action: 'setText', adminKey: adminKey(), title, desc });
+        if (!res.ok) { alert(res.error); return; }
+        document.getElementById('newTitle').value = '';
+        document.getElementById('newDesc').value = '';
+        applyResponse(res);
+        render();
+        alert('文章を変更しました。');
+    }
+
+    async function addOption() {
+        const name = document.getElementById('newName').value.trim();
+        if (!name) { alert('項目名を入力してください。'); return; }
+        const url = document.getElementById('newUrl').value.trim();
+        if (url && !/^https?:\/\//i.test(url)) {
+            alert('リンクURLは https:// または http:// で始まる形式で入力してください。');
+            return;
+        }
+        const res = await apiPost({
+            action: 'addOption',
+            adminKey: adminKey(),
+            emoji: document.getElementById('newEmoji').value.trim(),
+            name,
+            url
+        });
+        if (!res.ok) { alert(res.error); return; }
+        document.getElementById('newEmoji').value = '';
+        document.getElementById('newName').value = '';
+        document.getElementById('newUrl').value = '';
+        applyResponse(res);
+        render();
+    }
+
+    async function deleteOption(id) {
+        const o = poll.options.find(x => x.id === id);
+        if (!adminKey()) { alert('削除には管理メニューで管理キーの入力が必要です。'); return; }
+        if (!confirm(`「${o.name}」を削除しますか？（票数も消えます）`)) return;
+        const res = await apiPost({ action: 'deleteOption', adminKey: adminKey(), id });
+        if (!res.ok) { alert(res.error); return; }
+        if (loadMyVote() === id) saveMyVote(null);
+        applyResponse(res);
+        render();
+    }
+
+    async function setOptionUrl() {
+        const num = parseInt(document.getElementById('linkNum').value.trim(), 10);
+        if (!poll || isNaN(num) || num < 1 || num > poll.options.length) {
+            alert(`1〜${poll ? poll.options.length : '?'} の番号を入力してください。`);
+            return;
+        }
+        const url = document.getElementById('linkUrl').value.trim();
+        if (url && !/^https?:\/\//i.test(url)) {
+            alert('リンクURLは https:// または http:// で始まる形式で入力してください。');
+            return;
+        }
+        const target = poll.options[num - 1];
+        const res = await apiPost({ action: 'setOptionUrl', adminKey: adminKey(), id: target.id, url });
+        if (!res.ok) { alert(res.error); return; }
+        document.getElementById('linkNum').value = '';
+        document.getElementById('linkUrl').value = '';
+        applyResponse(res);
+        render();
+        alert(url ? `「${target.name}」にリンクを設定しました。` : `「${target.name}」のリンクを解除しました。`);
+    }
+
+    async function setDeadline() {
+        const v = document.getElementById('deadlineInput').value;
+        if (!v) { alert('日時を選択してください。'); return; }
+        const res = await apiPost({ action: 'setDeadline', adminKey: adminKey(), deadline: new Date(v).toISOString() });
+        if (!res.ok) { alert(res.error); return; }
+        applyResponse(res);
+        render();
+        alert('締切を設定しました：' + fmtDate(poll.deadline));
+    }
+
+    async function clearDeadline() {
+        const res = await apiPost({ action: 'setDeadline', adminKey: adminKey(), deadline: '' });
+        if (!res.ok) { alert(res.error); return; }
+        applyResponse(res);
+        render();
+        alert('締切を解除しました。');
+    }
+
+    async function resetAllVotes() {
+        if (!confirm(`「${poll.title}」の全員の票をゼロに戻します。よろしいですか？`)) return;
+        const res = await apiPost({ action: 'resetVotes', adminKey: adminKey() });
+        if (!res.ok) { alert(res.error); return; }
+        saveMyVote(null);
+        applyResponse(res);
+        render();
+    }
+
+    // ---- 読み込み ----
+    async function load() {
+        const requested = currentThemeId;
+        try {
+            const res = await apiGet(requested);
+            if (requested !== currentThemeId) return; // 読込中にテーマが切り替わった
+            if (res.ok) { applyResponse(res); render(); }
+        } catch (e) {
+            document.getElementById('pollTitle').textContent = '⚠️ 接続エラー';
+            document.getElementById('pollDesc').textContent =
+                'API_URLが未設定か、Apps Scriptのデプロイ設定をご確認ください。';
+        }
+    }
+
+    (async () => {
+        await load();
+        loadComments();
+    })();
+    setInterval(load, 15000);
+    setInterval(loadComments, 30000);
+</script>
+</body>
+</html>
