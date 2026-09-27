@@ -480,8 +480,8 @@
     // ★★★ Google Apps Script（code.gs）のウェブアプリURL ★★★
     const API_URL = 'https://script.google.com/macros/s/AKfycbyY43fbK6Mm0hc_l8Qy1HaCmVNKUotjJ6zC2cFSK1tDo-YbajOjC1Xw9XBawmQDtKzn/exec';
 
-    // ★★★ コメント保存用GAS（comment-backend.gs）のウェブアプリURL ★★★
-    const COMMENT_API_URL = 'https://script.google.com/macros/s/AKfycbwsjLiUVAjJvgXNGF0901R2ujusLGc_MTERkdHkQoEj_wsTX_DIErSd5wMm0lfk8NS2LQ/exec';
+    // コメントも同じGASプロジェクトで処理（api=comment で振り分け）
+    const COMMENT_API_URL = API_URL;
 
     const LP_URL = 'https://kenken6291.github.io/touhyou-lp/';
     const CHART_COLORS = ['#e5534b', '#3b82f6', '#43a047', '#f5a623', '#9c5fd6', '#00a3a3', '#ec6fa0', '#7a869a'];
@@ -848,7 +848,7 @@
         try {
             const res = await fetch(COMMENT_API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ target, comment, themeId: currentThemeId })
+                body: JSON.stringify({ api: 'comment', target, comment, themeId: currentThemeId })
             });
             const json = await res.json();
             if (json.status === 'ok') {
@@ -874,7 +874,7 @@
         }
         const tid = currentThemeId;
         try {
-            const url = tid ? `${COMMENT_API_URL}?theme=${encodeURIComponent(tid)}` : COMMENT_API_URL;
+            const url = `${COMMENT_API_URL}?api=comment` + (tid ? `&theme=${encodeURIComponent(tid)}` : '');
             const json = await fetchJson(url);
             if (tid !== currentThemeId) return; // 途中でテーマが切り替わった
             if (json.status !== 'ok') throw new Error(json.message || 'error');
@@ -1094,7 +1094,12 @@
                 applyResponse(res);
                 render();
             } else if (!poll) {
-                showLoadError((res && (res.error || res.message)) || 'データを取得できませんでした。');
+                let msg = (res && (res.error || res.message)) || '';
+                if (!msg && res && res.status && 'comments' in res) {
+                    msg = 'GASが古いままです（コメント用の処理が応答しています）。コード.gs・comment-backend.gs を差し替えて新バージョンでデプロイしてください。';
+                }
+                if (!msg) msg = 'データを取得できませんでした。（応答: ' + JSON.stringify(res).slice(0, 120) + '）';
+                showLoadError(msg);
             }
         } catch (e) {
             // 定期更新での一時的な失敗は、表示済みの内容を消さない
