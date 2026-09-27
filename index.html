@@ -535,10 +535,29 @@
     if (lsGet('guideClosed')) closeGuide(); else openGuide();
 
     // ---- API ----
+    // タイムアウト付きfetch（応答が返らず「読込中」のまま固まるのを防ぐ）
+    async function fetchJson(url, options = {}, timeoutMs = 20000) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+            const res = await fetch(url, { ...options, signal: ctrl.signal });
+            const text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                // GASがHTML（ログイン画面・エラーページ）を返した場合
+                throw new Error('サーバーの応答が正しくありません（Apps Scriptのデプロイ設定をご確認ください）');
+            }
+        } catch (e) {
+            if (e.name === 'AbortError') throw new Error('サーバーの応答がありません（タイムアウト）');
+            throw e;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
     async function apiGet(themeId) {
         const url = themeId ? `${API_URL}?theme=${encodeURIComponent(themeId)}` : API_URL;
-        const res = await fetch(url);
-        return res.json();
+        return fetchJson(url);
     }
     async function apiPost(body) {
         const res = await fetch(API_URL, {
@@ -856,8 +875,7 @@
         const tid = currentThemeId;
         try {
             const url = tid ? `${COMMENT_API_URL}?theme=${encodeURIComponent(tid)}` : COMMENT_API_URL;
-            const res = await fetch(url);
-            const json = await res.json();
+            const json = await fetchJson(url);
             if (tid !== currentThemeId) return; // 途中でテーマが切り替わった
             if (json.status !== 'ok') throw new Error(json.message || 'error');
 
@@ -1020,16 +1038,69 @@
     }
 
     // ---- 読み込み ----
+    function showLoadError(msg) {
+        const retry = '<button class="vote-btn" onclick="retryLoad()" style="margin-top:10px">🔄 再読み込み</button>';
+        document.getElementById('pollTitle').textContent = '⚠️ 読み込めませんでした';
+        document.getElementById('pollDesc').textContent = msg;
+        const badge = document.getElementById('deadlineBadge');
+        badge.textContent = '接続エラー';
+        badge.className = 'deadline closed';
+        const tl = document.getElementById('themeList');
+        tl.className = 'theme-list';
+        tl.innerHTML = `<p class="hint">⚠️ テーマを読み込めませんでした。<br>${escapeHtml(msg)}</p>${retry}`;
+        ['options', 'ranking'].forEach(id => {
+            const el = document.getElementById(id);
+            el.className = '';
+            el.innerHTML = `<p class="hint">⚠️ 読み込めませんでした。</p>`;
+        });
+    }
+
+    function clearThemeParam() {
+        const url = new URL(location.href);
+        url.searchParams.delete('t');
+        history.replaceState(null, '', url);
+    }
+
+    async function retryLoad() {
+        document.getElementById('pollTitle').textContent = '📊 読込中...';
+        document.getElementById('pollDesc').textContent = '';
+        document.getElementById('deadlineBadge').textContent = '締切を確認中...';
+        document.getElementById('deadlineBadge').className = 'deadline';
+        const tl = document.getElementById('themeList');
+        tl.className = 'theme-list loading';
+        tl.textContent = '読込中...';
+        await load();
+        loadComments();
+    }
+
+    let loading = false;
     async function load() {
+        if (loading) return;
+        loading = true;
         const requested = currentThemeId;
         try {
-            const res = await apiGet(requested);
+            let res = await apiGet(requested);
             if (requested !== currentThemeId) return; // 読込中にテーマが切り替わった
-            if (res.ok) { applyResponse(res); render(); }
+
+            // 指定テーマが削除済み等で取得できない場合は、テーマ指定なしで取り直す
+            if ((!res || !res.poll) && requested) {
+                clearThemeParam();
+                currentThemeId = null;
+                res = await apiGet(null);
+            }
+
+            // 旧バックエンド（ok無し）も poll があれば表示する
+            if (res && res.poll && res.ok !== false) {
+                applyResponse(res);
+                render();
+            } else if (!poll) {
+                showLoadError((res && (res.error || res.message)) || 'データを取得できませんでした。');
+            }
         } catch (e) {
-            document.getElementById('pollTitle').textContent = '⚠️ 接続エラー';
-            document.getElementById('pollDesc').textContent =
-                'API_URLが未設定か、Apps Scriptのデプロイ設定をご確認ください。';
+            // 定期更新での一時的な失敗は、表示済みの内容を消さない
+            if (!poll) showLoadError(e.message || 'API_URLが未設定か、Apps Scriptのデプロイ設定をご確認ください。');
+        } finally {
+            loading = false;
         }
     }
 
